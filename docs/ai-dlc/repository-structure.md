@@ -1,151 +1,120 @@
-# Proposed Repository Structure
+# Repository Structure
 
-Status: **Accepted** (Phase 1 gate, 2026-10-25). Assumes a **monorepo** ([ADR-0010](../adr/0010-repository-strategy-monorepo.md), Q1 confirmed).
-Markers: **M** = mandatory (CI `dlc-check` fails without it), **C** = conditional (required when the
-condition in the note applies), **E** = example (reference implementation that shows the pattern and
-can be replaced).
+Status: **Accepted** (Phase 1 gate, 2026-10-25); **revised in Phase 2** for the layer-first layout of
+[ADR-0016](../adr/0016-repository-layout-and-instruction-files.md) (Proposed until the Phase 2 gate).
+Monorepo per [ADR-0010](../adr/0010-repository-strategy-monorepo.md).
+
+Markers: **M** = mandatory (`scripts/validate-dlc` or CI fails without it), **C** = conditional
+(required when the note applies), **E** = example (reference implementation; replaceable).
+State column: ✅ exists now · ⏳ planned (phase).
 
 ## Root and AI configuration
 
-| Path | M/C/E | Purpose |
-|---|---|---|
-| `CLAUDE.md` | M | Root instructions under 200 lines: mission summary, golden rules, how to resume (read `state.md`), pointers to rules and skills |
-| `CLAUDE.local.md` | C | Personal, gitignored notes (only if a developer wants them) |
-| `README.md` | M | What the repo is, quick start, links to process, catalog and ADRs |
-| `.gitignore` / `.gitattributes` / `.editorconfig` | M | Ignore rules (incl. `CLAUDE.local.md`, `.claude/settings.local.json`, `*.tfstate`, `.env*`), line endings, code style |
-| `global.json` | M | Pins the .NET SDK (10.0.x, `rollForward: latestFeature`) |
-| `Directory.Build.props` | M | Repo-wide MSBuild: `Nullable=enable`, `TreatWarningsAsErrors=true`, analyzers, `AnalysisLevel=latest-recommended`, deterministic builds |
-| `.claude/settings.json` | M | Team permissions (allow/ask/**deny**) and hooks (PreToolUse guard, PostToolUse format, SessionStart state banner, Stop checks) |
-| `.claude/hooks/guard-commands.ps1` + `.sh` | M | PreToolUse: blocks `terraform apply/destroy`, push to `main`, force-push, AWS mutating calls and secret reads. Exits 2 with a reason |
-| `.claude/hooks/session-start.ps1` + `.sh` | M | Prints the phase, next steps and open questions from `docs/ai-dlc/state.md` |
-| `.claude/hooks/post-edit-format.ps1` + `.sh` | C | Runs `dotnet format`/`prettier` on edited files (when the toolchain is present) |
-| `.claude/rules/security.md` | M | Secrets, input validation, authz, logging redaction (always loaded) |
-| `.claude/rules/dotnet.md` | M | `paths: services/**/*.cs, platform/dotnet/**`: Clean Architecture layering, Problem Details, versioning, no EF Core |
-| `.claude/rules/sql.md` | M | `paths: **/db/**/*.sql`: function-only access, SECURITY DEFINER + search_path, tenant first parameter, RLS, Flyway naming |
-| `.claude/rules/frontend.md` | M | `paths: web/**`: strict TS, feature folders, TanStack Query, RHF + Zod, i18n/RTL, WCAG 2.2 AA |
-| `.claude/rules/terraform.md` | M | `paths: **/*.tf`: module usage, tagging, no `apply`, backend rules |
-| `.claude/rules/testing.md` | M | Test pyramid, naming, Testcontainers, pgTAP, no weakening tests |
-| `.claude/rules/messaging.md` | M | `paths: **/contracts/events/**, **/Messaging/**`: outbox, envelope, idempotency, versioning |
-| `.claude/skills/aidlc-inception/SKILL.md` | M | Runs Inception stages I1–I12 and writes the artifacts from templates |
-| `.claude/skills/aidlc-construction/SKILL.md` | M | Runs C1–C5 for one UOW |
-| `.claude/skills/aidlc-operations/SKILL.md` | M | Prepares O1–O5 (plans, runbook, SLOs). Never applies (`disable-model-invocation: true`) |
-| `.claude/skills/new-service/SKILL.md` | M | Wraps `dotnet new workshop-service` and adds the catalog row, ADR stub, workflow and infra stack |
-| `.claude/skills/upgrade-service/SKILL.md` | M | Brings a service up to the current template version (ADR-0009) |
-| `.claude/skills/db-function/SKILL.md` | M | Scaffolds an `R__` function + pgTAP test + Dapper repository method |
-| `.claude/skills/adr/SKILL.md` | M | Creates the next numbered MADR and updates the ADR index |
-| `.claude/skills/phase-status/SKILL.md` | M | Updates `state.md` and appends `audit.md` in the standard format |
-| `.claude/agents/security-reviewer.md` | M | Read-only reviewer: OWASP ASVS-oriented checklist, tenancy, secrets, authz |
-| `.claude/agents/architecture-reviewer.md` | M | Read-only reviewer: boundaries, layering, ADR conformance |
-| `.claude/agents/test-engineer.md` | M | Writes or extends tests from ACs. Never deletes or weakens tests |
-| `.claude/agents/db-engineer.md` | C | SQL/pgTAP specialist (recommended for services with a DB) |
-| `.claude/agents/frontend-a11y-reviewer.md` | C | WCAG 2.2 AA + RTL review (when `web/` changes) |
-| `.mcp.json` | C | Only if an MCP server is approved by ADR |
+| Path | M/C/E | State | Purpose |
+|---|---|---|---|
+| `CLAUDE.md` | M | ✅ | Root instructions (≤ 150 lines): mission, workflow, CORE rules, index of which file applies |
+| `CLAUDE.local.md` | C | — | Personal, gitignored notes |
+| `README.md`, `CONTRIBUTING.md`, `SECURITY.md` | M | ✅ | Entry point, contributor guide, vulnerability policy |
+| `.gitignore`, `.gitattributes`, `.editorconfig` | M | ✅ | Ignore rules (secrets, local settings, build output), LF for scripts, code style |
+| `.claude/settings.json` | M | ✅ | Shared permissions (deny/ask/allow) and hooks |
+| `.claude/hooks/*.sh`, `lib/json.sh`, `README.md`, `tests/` | M | ✅ | Guard, formatter, Stop reminder, SessionStart banner; documentation and tests |
+| `.claude/skills/<name>/SKILL.md` (11) | M | ✅ | One skill per repeatable workflow (list in `CLAUDE.md`) |
+| `.claude/agents/*-reviewer.md` (4) | M | ✅ | Read-only reviewers with severity-rated findings |
+| `.mcp.json` | C | — | Only if an MCP server is approved by ADR |
 
 ## GitHub
 
-| Path | M/C/E | Purpose |
-|---|---|---|
-| `.github/CODEOWNERS` | M | Ownership per folder. `.claude/`, `.github/`, `docs/adr/` owned by DLC maintainers/architects |
-| `.github/pull_request_template.md` | M | UOW link, AC→test map, evidence of commands run, deferred work, gates |
-| `.github/ISSUE_TEMPLATE/*.yml` | C | Intent / bug / change request forms |
-| `.github/dependabot.yml` | M | NuGet, npm, GitHub Actions, Terraform, Docker updates |
-| `.github/workflows/_reusable-dotnet-service.yml` | M | Build, test, arch tests, pgTAP, contract tests, image build + attestation |
-| `.github/workflows/_reusable-terraform.yml` | M | fmt/validate/tflint/trivy/checkov/plan. Apply only in Environment jobs |
-| `.github/workflows/_reusable-deploy-ecs.yml` | M | Flyway task → ECS deploy → smoke test, per environment via OIDC |
-| `.github/workflows/_reusable-web.yml` | M | Lint, typecheck, Vitest, Playwright + axe, build, S3 sync + CloudFront invalidation |
-| `.github/workflows/dlc-validate.yml` | M | Runs `tools/dlc-check` (structure, ADRs, catalog, state/audit, boundaries, Claude config lint) |
-| `.github/workflows/security.yml` | M | CodeQL, dependency review, secret scanning (gitleaks), Trivy fs |
-| `.github/workflows/pr-title.yml` | M | Conventional Commit check on the PR title |
-| `.github/workflows/svc-<name>.yml` | M (per service) | Thin caller of the reusable workflows with path filters |
-| `.github/workflows/infra-<stack>.yml` | M (per platform stack) | Platform Terraform stacks |
-| `.github/workflows/release.yml` | M | release-please (monorepo mode) creating `<component>/vX.Y.Z` tags |
+| Path | M/C/E | State | Purpose |
+|---|---|---|---|
+| `.github/CODEOWNERS` | M | ✅ | Ownership per path; one owner today, team handles noted |
+| `.github/pull_request_template.md` | M | ✅ | AC→test map, evidence, self-review, deferred work |
+| `.github/ISSUE_TEMPLATE/{intent,bug,change-request}.yml`, `config.yml` | M | ✅ | Issue forms; private vulnerability reporting link |
+| `.github/dependabot.yml` | M | ✅ | GitHub Actions now; NuGet/npm/Terraform/Docker added with the first code |
+| `.github/workflows/dlc-validate.yml` | M | ✅ | Runs `scripts/validate-dlc`, its self-tests and hook tests on every PR |
+| `.github/workflows/_reusable-{dotnet-service,terraform,deploy-ecs,web}.yml` | M | ⏳ P3/P4 | Shared pipeline logic |
+| `.github/workflows/{security,pr-title,release}.yml` | M | ⏳ P3 | CodeQL/dependency review/secret scan, Conventional Commit title, release-please |
+| `.github/workflows/svc-<svc>.yml`, `web.yml`, `infra-<stack>.yml` | M | ⏳ P3–P5 | Thin per-deployable callers with path filters (CICD-04) |
 
 ## Documentation
 
-| Path | M/C/E | Purpose |
-|---|---|---|
-| `docs/ai-dlc/MISSION.md` | M | Verbatim mission (locked decisions) |
-| `docs/ai-dlc/process.md` | M | Lifecycle definition |
-| `docs/ai-dlc/state.md` | M | Current position (overwritten each stage) |
-| `docs/ai-dlc/audit.md` | M | Append-only decision log |
-| `docs/ai-dlc/plan.md` | M | Phase/UOW checklist |
-| `docs/ai-dlc/repository-structure.md` | M | This file |
-| `docs/ai-dlc/templates/*.md` | M | Templates for every artifact in process.md (intent, requirements, user-stories, nfr, data-classification, threat-model, domain-model, logical-design, units-of-work, plan, test-report, review, runbook, slo) |
-| `docs/ai-dlc/inception/*` | E | Reference-system Inception artifacts (this phase) |
-| `docs/intents/<YYYYMMDD>-<slug>/**` | C | Per-intent artifacts for future work |
-| `docs/adr/0000-template.md`, `README.md`, `NNNN-*.md` | M | ADRs (MADR) + index |
-| `docs/services/catalog.md` | M | Service catalog |
-| `docs/guides/*.md` | C | How-tos (onboarding, local setup, upgrade a service) |
+| Path | M/C/E | State | Purpose |
+|---|---|---|---|
+| `docs/ai-dlc/MISSION.md` | M | ✅ | Verbatim mission and locked decisions |
+| `docs/ai-dlc/process.md` | M | ✅ | Lifecycle definition |
+| `docs/ai-dlc/state.md`, `audit.md`, `plan.md` | M | ✅ | Current position, append-only decision log, phase checklist |
+| `docs/ai-dlc/VERSION`, `CHANGELOG.md`, `upgrading.md` | M | ✅ | DLC version, changes with upgrade actions, service upgrade procedure |
+| `docs/ai-dlc/repository-structure.md` | M | ✅ | This file |
+| `docs/ai-dlc/inception/*` | E | ✅ | Reference-system Inception artifacts |
+| `docs/intents/<YYYYMMDD>-<slug>/**` | C | — | Per-intent artifacts for future work |
+| `docs/standards/*.md` (12 + README) | M | ✅ | Detailed standards; one home per rule ID; not auto-loaded |
+| `docs/adr/README.md`, `NNNN-*.md` | M | ✅ | ADR index and records (template in `templates/adr.md`) |
+| `docs/services/catalog.md` | M | ✅ | Service catalog with owners and paths |
+| `docs/services/<svc>/service-definition.md` | C | ⏳ | Filled questionnaire per service (`new-service`) |
+| `docs/security/exceptions.md` | C | — | Dated vulnerability exceptions (SEC-15), created on first use |
 
-## Templates, tools, platform
+## Templates, checklists, scripts
 
-| Path | M/C/E | Purpose |
-|---|---|---|
-| `templates/Workshop.Templates.csproj` | M | Template pack project (NuGet) |
-| `templates/content/workshop-service/**` | M | `dotnet new` service template: solution, 4 layers, tests, db/, contracts/, infra/, Dockerfile, CLAUDE.md, `.dlc/version` |
-| `templates/content/workshop-service/.template.config/template.json` | M | Template parameters (name, owner, port, hasDatabase, publishesEvents, consumesEvents) |
-| `templates/CHANGELOG.md` | M | Template versions + upgrade notes consumed by `upgrade-service` |
-| `tools/dlc-check/` | M | Validation toolkit (a .NET console app, so no new runtime): structure, ADR format, catalog, state/audit, SQL lint, boundaries, Claude config frontmatter lint, Terraform backend lint |
-| `tools/scripts/*.ps1` + `*.sh` | C | Local helpers (db up, run migrations, run pgTAP) |
-| `platform/dotnet/Workshop.Platform.{Logging,Telemetry,Auth,ProblemDetails,Messaging}/**` | M | Shared NuGet packages (ADR-0015), each with tests and CHANGELOG |
-| `platform/web/web-platform/**` | C | `@workshop/web-platform` npm package (when ≥ 2 web apps, else lives in `web/`) |
+| Path | M/C/E | State | Purpose |
+|---|---|---|---|
+| `templates/README.md` + artifact templates (`inception/`, `construction/`, `operations/`, `adr.md`, `threat-model.md`, `runbook.md`, `feature-plan.md`, `api-endpoint.md`, `test-plan.md`) | M | ✅ | Starting points for every artifact in process.md |
+| `templates/db-function.sql`, `templates/migration.sql` | M | ✅ | SQL shapes for `R__` routines and `V__` migrations |
+| `templates/service/{README,questionnaire,service-definition}.md` | M | ✅ | Service questionnaire and skeleton specification |
+| `templates/service/dotnet/**` (`Workshop.Templates` pack) | M | ⏳ P3 | `dotnet new workshop-service` (needs the .NET SDK to build and test) |
+| `checklists/{code-review,security,db-change,production-readiness,release}.md` | M | ✅ | Verification lists that cite rule IDs |
+| `scripts/validate-dlc`, `validate-dlc.conflicts`, `tests/validate-dlc.test.sh` | M | ✅ | DLC validator, locked-decision conflict phrases, self-tests |
 
-## Services (per-service layout; `projects` shown)
+## Backend — `src/backend/` (one folder per service)
 
-| Path | M/C/E | Purpose |
-|---|---|---|
-| `services/projects/CLAUDE.md` | M | Service context: bounded context, invariants, commands to build/test, links to contracts |
-| `services/projects/.dlc/version` | M | Template version this service was generated from |
-| `services/projects/Projects.sln` + `Directory.Packages.props` | M | Solution and central package versions |
-| `services/projects/src/Projects.Domain/` | M | Entities, value objects, invariants, domain events. No infrastructure references |
-| `services/projects/src/Projects.Application/` | M | Use cases (commands/queries), ports (repository interfaces), validation, authorization rules |
-| `services/projects/src/Projects.Infrastructure/` | M | Npgsql + Dapper repositories calling `api.*` functions, SNS publisher, outbox dispatcher, secrets |
-| `services/projects/src/Projects.Api/` | M | ASP.NET Core host: endpoints, versioning, OpenAPI, Problem Details, auth policies, health checks |
-| `services/projects/tests/Projects.Domain.Tests/` | M | xUnit unit tests |
-| `services/projects/tests/Projects.Application.Tests/` | M | Use-case tests with fakes |
-| `services/projects/tests/Projects.Architecture.Tests/` | M | NetArchTest layering + "no EF Core" rules |
-| `services/projects/tests/Projects.Integration.Tests/` | M | Testcontainers PostgreSQL 18 + Flyway + API (WebApplicationFactory) |
-| `services/projects/tests/Projects.Contract.Tests/` | C | PactNet provider/message verification (when it has consumers or providers) |
-| `services/projects/db/migrations/V*__*.sql` | M | Versioned schema migrations |
-| `services/projects/db/migrations/R__*.sql` | M | Repeatable functions/procedures (one object per file) |
-| `services/projects/db/tests/*.sql` | M | pgTAP tests |
-| `services/projects/db/flyway.toml` | M | Flyway config (no secrets) |
-| `services/projects/contracts/openapi/v1.yaml` | M | Published OpenAPI (generated + checked in, diffed in CI) |
-| `services/projects/contracts/events/*.schema.json` | C | Event schemas (when it publishes events) |
-| `services/projects/infra/` | M | Service Terraform stack + `envs/{dev,staging,prod}` |
-| `services/projects/Dockerfile` | M | Multi-stage build, chiseled/distroless runtime, non-root |
-| `services/projects/docs/runbook.md`, `slo.md` | M | Operations docs |
-| `services/projects/CHANGELOG.md` | M | Generated by release-please |
-| `services/notifications/**` | E | Second reference service, same layout (Phase 5) |
-| `services/web-bff/**` | M (if ADR-0005 BFF accepted) | BFF host (YARP, OIDC). No Domain/DB layers |
+| Path | M/C/E | State | Purpose |
+|---|---|---|---|
+| `src/backend/CLAUDE.md` | M | ✅ | .NET context and commands (on demand) |
+| `src/backend/Directory.Build.props` | M | ⏳ P3 | Nullable, warnings as errors, analyzers (BE-01) |
+| `src/backend/services/<svc>/<Svc>.sln`, `Directory.Packages.props`, `Dockerfile`, `CLAUDE.md`, `.dlc/version`, `CHANGELOG.md` | M | ⏳ P3 | Service solution, packages, image, context, DLC stamp |
+| `src/backend/services/<svc>/src/<Svc>.{Domain,Application,Infrastructure,Api}/` | M | ⏳ P3 | Clean Architecture layers (ARCH-06) |
+| `src/backend/services/<svc>/tests/<Svc>.{Domain,Application,Architecture,Integration}.Tests/` | M | ⏳ P3 | Tests per TEST rules |
+| `src/backend/services/<svc>/tests/<Svc>.Contract.Tests/` | C | ⏳ P5 | When the service has cross-service consumers/providers |
+| `src/backend/services/<svc>/contracts/openapi/v<N>.yaml`, `contracts/events/*.schema.json` | M / C | ⏳ P3 | Published contracts (events only for producers) |
+| `src/backend/services/<svc>/docs/{runbook,slo}.md` | M | ⏳ P3 | Operations documents |
+| `src/backend/services/projects/**`, `notifications/**` | E | ⏳ P3, P5 | Reference services |
+| `src/backend/services/web-bff/**` | M | ⏳ P4 | BFF (ADR-0005), no Domain/DB layers |
+| `src/backend/platform/Workshop.Platform.{Logging,Telemetry,Auth,ProblemDetails,Messaging}/` | M | ⏳ P3 | Shared NuGet packages (ADR-0015) |
 
-## Web
+## Frontend — `src/frontend/`
 
-| Path | M/C/E | Purpose |
-|---|---|---|
-| `web/package.json`, `tsconfig.json` (strict), `vite.config.ts`, `eslint.config.js` | M | Toolchain |
-| `web/src/app/` | M | App shell, providers (QueryClient, i18n, router), error boundary |
-| `web/src/features/<feature>/{api,components,hooks,schemas,routes}/` | M | Feature-based modules (projects, tasks, notifications) |
-| `web/src/shared/` | M | Design-system components, a11y helpers, BFF HTTP client |
-| `web/src/i18n/{he,en}/*.json` | M | Translations. Hebrew default, `dir="rtl"` |
-| `web/tests/e2e/` | M | Playwright + axe-core |
-| `web/infra/` | M | S3 bucket + CloudFront + WAF association stack (or part of `infra/live/*/edge`) |
+| Path | M/C/E | State | Purpose |
+|---|---|---|---|
+| `src/frontend/CLAUDE.md` | M | ✅ | React context and commands (on demand) |
+| `src/frontend/{package.json,tsconfig.json,vite.config.ts,eslint.config.js}` | M | ⏳ P4 | Toolchain, strict TypeScript |
+| `src/frontend/src/{app,features,shared,i18n}/` | M | ⏳ P4 | Feature-based app, he/en translations |
+| `src/frontend/tests/e2e/` | M | ⏳ P4 | Playwright + axe-core |
 
-## Infrastructure
+## Database — `db/`
 
-| Path | M/C/E | Purpose |
-|---|---|---|
-| `infra/modules/<module>/` | M | Reusable modules (see ADR-0007), each with README, `examples/` and `tests/` |
-| `infra/bootstrap/` | M | Per-account state bucket, KMS, GitHub OIDC provider + roles. Run once by a human |
-| `infra/live/<env>/<stack>/` | M | Platform stacks per environment |
-| `infra/README.md` | M | Stack order, how to plan, who applies |
-| `.tflint.hcl`, `.checkov.yaml`, `trivy.yaml` | M | IaC scanner configuration |
+| Path | M/C/E | State | Purpose |
+|---|---|---|---|
+| `db/CLAUDE.md` | M | ✅ | PostgreSQL context and commands (on demand) |
+| `db/<svc>/flyway.toml`, `ERRORS.md` | M | ⏳ P3 | Flyway config (no secrets), SQLSTATE error catalog |
+| `db/<svc>/migrations/V*__*.sql`, `R__*.sql` | M | ⏳ P3 | Versioned schema, repeatable routines |
+| `db/<svc>/tests/*.test.sql` | M | ⏳ P3 | pgTAP tests |
+| `db/<svc>/seed/dev.sql` | C | ⏳ P3 | Synthetic local/dev data |
 
-## Deviations from MISSION (and where they are recorded)
+## Infrastructure — `infra/`
+
+| Path | M/C/E | State | Purpose |
+|---|---|---|---|
+| `infra/CLAUDE.md` | M | ✅ | Terraform context and commands (on demand) |
+| `infra/modules/<module>/` | M | ⏳ P4 | Reusable modules with README, examples, tests |
+| `infra/bootstrap/` | M | ⏳ P4 | Per-account state bucket, KMS, GitHub OIDC (human-run once) |
+| `infra/live/<env>/<stack>/` | M | ⏳ P4 | Platform stacks per environment |
+| `infra/services/<svc>/main.tf`, `envs/<env>/` | M | ⏳ P3–P5 | Service stacks |
+| `infra/README.md`, `.tflint.hcl`, `.checkov.yaml`, `trivy.yaml` | M | ⏳ P4 | Stack order, scanner config |
+
+## Deviations from MISSION and earlier decisions (and where they are recorded)
 
 | Deviation | Reason | Record |
 |---|---|---|
 | Per-service tags `<svc>/vX.Y.Z` instead of plain `vX.Y.Z` | Several independently versioned services in one repo | ADR-0008 |
-| Several states per environment (one per stack) | Independent service deploys, smaller blast radius. Still no state shared across environments | ADR-0007 |
+| Several Terraform states per environment (one per stack) | Independent service deploys; still no state shared across environments | ADR-0007 |
 | An extra deployable `web-bff` that is not a bounded context | Chosen browser-auth model | ADR-0005, ADR-0011 |
-| Artifact root `docs/ai-dlc/` instead of upstream `aidlc-docs/` | Keep all docs under `docs/` | ADR-0001 |
+| Artifact root `docs/ai-dlc/` instead of upstream `aidlc-docs/` | All docs under `docs/` | ADR-0001 |
+| Layer-first layout (`src/backend`, `src/frontend`, `db`, `infra`) replacing `services/<svc>/`; `docs/standards/` + folder `CLAUDE.md` replacing `.claude/rules/`; `scripts/validate-dlc` replacing `tools/dlc-check` | Phase 2 instruction; context budget; validator must run without the .NET SDK | ADR-0016 |

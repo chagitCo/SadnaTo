@@ -1,0 +1,8 @@
+# Normalize line endings in the repository; scripts must keep LF to run in bash.
+* text=auto eol=lf
+*.sh text eol=lf
+scripts/validate-dlc text eol=lf
+*.ps1 text eol=crlf
+*.png binary
+*.jpg binary
+*.ico binary

@@ -6,6 +6,8 @@ consulted: Principal Architect, DevSecOps Engineer
 informed: All service teams
 ---
 
+> **Amended by [ADR-0016](0016-repository-layout-and-instruction-files.md)** (2026-10-25): repository paths and instruction-file mechanism changed; the decision below is otherwise unchanged.
+
 # 0010 — Repository strategy: monorepo with strong per-service boundaries
 
 ## Context and Problem Statement

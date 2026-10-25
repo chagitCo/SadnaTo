@@ -1,0 +1,40 @@
+name: Intent (new feature or service)
+description: Propose something new to build. Starts the AI-DLC Inception phase.
+title: "intent: <short title>"
+labels: ["intent"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: Who has what problem today? Any evidence?
+    validations:
+      required: true
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal and success metrics
+      description: What outcome do we want, and how will we measure it?
+    validations:
+      required: true
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Kind
+      options: ["New feature in an existing service", "New service", "Platform / DLC change"]
+    validations:
+      required: true
+  - type: input
+    id: services
+    attributes:
+      label: Affected services
+      description: Names from docs/services/catalog.md, or "new".
+  - type: textarea
+    id: constraints
+    attributes:
+      label: Constraints
+      description: Deadline, budget, compliance, data residency, dependencies.
+  - type: textarea
+    id: nongoals
+    attributes:
+      label: Non-goals

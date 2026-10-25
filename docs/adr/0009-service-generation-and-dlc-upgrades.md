@@ -6,6 +6,8 @@ consulted: Principal Architect, Senior C#/.NET Engineer, DevSecOps Engineer
 informed: All service teams
 ---
 
+> **Amended by [ADR-0016](0016-repository-layout-and-instruction-files.md)** (2026-10-25): repository paths and instruction-file mechanism changed; the decision below is otherwise unchanged.
+
 # 0009 — Service generation via a `dotnet new` template pack; DLC upgrades via versioned layers
 
 ## Context and Problem Statement
