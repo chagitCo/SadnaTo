@@ -1,6 +1,6 @@
 ---
-status: Proposed
-date: 2026-10-21
+status: Accepted
+date: 2026-10-21 (accepted 2026-10-25)
 deciders: Human approver (repo owner)
 consulted: DevSecOps Engineer, QA Automation Engineer
 informed: All service teams
@@ -38,7 +38,7 @@ approval). In a monorepo (ADR-0010) several services release independently.
 
 - Good, because each service has independent cadence and immutable promoted artifacts.
 - Bad, because per-service tags are not the plain `vX.Y.Z` named in MISSION. This is a recorded deviation.
-- Bad, because required reviewers on Environments and rulesets for **private** repos depend on the GitHub plan (pending **Q9**). The fallback is a `workflow_dispatch` prod job restricted to CODEOWNERS plus a CODEOWNERS-protected `deploy/prod` approval file.
+- Bad, because required reviewers on Environments and rulesets for **private** repos depend on the GitHub plan (confirmed in Q9 (default)). The fallback is a `workflow_dispatch` prod job restricted to CODEOWNERS plus a CODEOWNERS-protected `deploy/prod` approval file.
 
 ### Confirmation
 

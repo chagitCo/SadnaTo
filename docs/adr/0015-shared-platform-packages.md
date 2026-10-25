@@ -1,6 +1,6 @@
 ---
-status: Proposed
-date: 2026-10-21
+status: Accepted
+date: 2026-10-21 (accepted 2026-10-25)
 deciders: Human approver (repo owner)
 consulted: Principal Architect, Senior C#/.NET Engineer, Senior React/TypeScript Engineer
 informed: All service teams
@@ -29,7 +29,7 @@ packages published to GitHub Packages. What is allowed, and how are the packages
 | `Workshop.Platform.Telemetry` | OpenTelemetry setup (traces, metrics, logs), OTLP → ADOT collector / CloudWatch / X-Ray, W3C propagation | Domain metrics names |
 | `Workshop.Platform.Auth` | JWT validation defaults, scope policies, client-credentials token handler | Role/permission rules of any domain |
 | `Workshop.Platform.ProblemDetails` | RFC 9457 mapping, exception → problem middleware, validation problem shape, error-type URI scheme | Domain error catalogs |
-| `Workshop.Platform.Messaging` (**PENDING Q10**) | CloudEvents envelope, SNS publisher, outbox dispatcher host, SQS consumer host with idempotency hooks, trace propagation | Event payload types (they belong to the producer's contracts) |
+| `Workshop.Platform.Messaging` (confirmed, Q10) | CloudEvents envelope, SNS publisher, outbox dispatcher host, SQS consumer host with idempotency hooks, trace propagation | Event payload types (they belong to the producer's contracts) |
 | `@workshop/web-platform` (npm) | i18n/RTL setup, HTTP client to the BFF with CSRF header, error boundary, a11y test helpers | Feature components |
 
 **Rules**

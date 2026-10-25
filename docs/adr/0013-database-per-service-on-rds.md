@@ -1,6 +1,6 @@
 ---
-status: Proposed
-date: 2026-10-21
+status: Accepted
+date: 2026-10-21 (accepted 2026-10-25)
 deciders: Human approver (repo owner)
 consulted: AWS Cloud Architect, Application Security Engineer
 informed: All service teams
@@ -29,7 +29,7 @@ own **instance**, or its own **database** on a shared instance. The trade-off is
 
 ## Decision Outcome
 
-Chosen option: **2 in every environment, with an explicit split trigger** (PENDING **Q3**).
+Chosen option: **2 in every environment, with an explicit split trigger**.
 
 | Environment | Topology (default) |
 |---|---|

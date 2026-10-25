@@ -1,6 +1,6 @@
 ---
-status: Proposed
-date: 2026-10-21
+status: Accepted
+date: 2026-10-21 (accepted 2026-10-25)
 deciders: Human approver (repo owner)
 consulted: Principal Architect, DevSecOps Engineer
 informed: All service teams
@@ -28,7 +28,7 @@ two reference services, a web app and a BFF. Teams and service count are small t
 
 ## Decision Outcome
 
-Chosen option: **1 — Monorepo** (PENDING **Q1**).
+Chosen option: **1 — Monorepo**.
 
 - **CI:** one workflow per deployable, triggered by `paths:` filters (`services/projects/**`, `platform/**` for dependants, and so on). Shared logic lives in reusable workflows. A `changes` job (dorny/paths-filter or native `paths`) keeps PR CI proportional.
 - **CODEOWNERS:** per folder (`/services/projects/ @org/team-projects`, `/infra/ @org/platform`, `/.claude/ @org/dlc-maintainers`, `/docs/adr/ @org/architects`). Changes to `.claude/**`, `.github/**` and `CODEOWNERS` need DLC-maintainer approval.
