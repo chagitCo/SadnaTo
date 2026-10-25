@@ -1,0 +1,133 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "deny": [
+      "Read(.env*)",
+      "Read(**/secrets/**)",
+      "Read(*.pem)",
+      "Read(*.key)",
+      "Read(*.pfx)",
+      "Read(*.p12)",
+      "Bash(terraform apply*)",
+      "Bash(terraform destroy*)",
+      "Bash(terraform -chdir=* apply*)",
+      "Bash(terraform -chdir=* destroy*)",
+      "Bash(aws * create-*)",
+      "Bash(aws * delete-*)",
+      "Bash(aws * put-*)",
+      "Bash(aws * update-*)",
+      "Bash(aws * modify-*)",
+      "Bash(aws * terminate-*)",
+      "Bash(aws * run-*)",
+      "Bash(aws * start-*)",
+      "Bash(aws * stop-*)",
+      "Bash(aws * attach-*)",
+      "Bash(aws * detach-*)",
+      "Bash(aws * tag-*)",
+      "Bash(aws * invoke*)",
+      "Bash(aws * publish*)",
+      "Bash(aws * deploy*)",
+      "Bash(aws s3 cp *)",
+      "Bash(aws s3 mv *)",
+      "Bash(aws s3 rm *)",
+      "Bash(aws s3 sync *)",
+      "Bash(aws s3 rb *)",
+      "Bash(git push --force*)",
+      "Bash(git push -f*)",
+      "Bash(git push * --force*)",
+      "Bash(git push * -f*)",
+      "Bash(git push origin main*)",
+      "Bash(git push * main)",
+      "Bash(git push *:main)",
+      "Bash(rm -rf *)",
+      "Bash(rm -fr *)",
+      "Bash(rm -r -f *)",
+      "Bash(psql *rds.amazonaws.com*)",
+      "PowerShell(terraform apply*)",
+      "PowerShell(terraform destroy*)",
+      "PowerShell(aws * create-*)",
+      "PowerShell(aws * delete-*)",
+      "PowerShell(aws * put-*)",
+      "PowerShell(aws * update-*)",
+      "PowerShell(aws * terminate-*)",
+      "PowerShell(aws s3 rm *)",
+      "PowerShell(git push --force*)",
+      "PowerShell(git push -f*)",
+      "PowerShell(git push origin main*)",
+      "PowerShell(Remove-Item * -Recurse * -Force*)",
+      "PowerShell(psql *rds.amazonaws.com*)"
+    ],
+    "ask": [
+      "Bash(git push *)",
+      "Bash(gh pr merge *)",
+      "PowerShell(git push *)",
+      "PowerShell(gh pr merge *)"
+    ],
+    "allow": [
+      "Bash(scripts/validate-dlc*)",
+      "Bash(bash scripts/validate-dlc*)",
+      "Bash(bash scripts/tests/validate-dlc.test.sh)",
+      "Bash(bash .claude/hooks/tests/guard-command.test.sh)",
+      "Bash(bash .claude/hooks/tests/other-hooks.test.sh)",
+      "Bash(dotnet build *)",
+      "Bash(dotnet test *)",
+      "Bash(dotnet format *)",
+      "Bash(npm run lint*)",
+      "Bash(npm run typecheck*)",
+      "Bash(npm test*)",
+      "Bash(terraform fmt *)",
+      "Bash(terraform validate*)",
+      "Bash(tflint *)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/.claude/hooks/session-start.sh\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/.claude/hooks/guard-command.sh\"",
+            "timeout": 10,
+            "onFailure": "block"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/.claude/hooks/format-edited-file.sh\"",
+            "timeout": 60
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/.claude/hooks/stop-state-reminder.sh\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

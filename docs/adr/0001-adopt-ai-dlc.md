@@ -6,6 +6,8 @@ consulted: Principal Architect, DevSecOps Engineer (Claude Code roles)
 informed: All service teams
 ---
 
+> **Amended by [ADR-0016](0016-repository-layout-and-instruction-files.md)** (2026-10-25): repository paths and instruction-file mechanism changed; the decision below is otherwise unchanged.
+
 # 0001 — Adopt AI-DLC, implemented natively in Claude Code
 
 ## Context and Problem Statement

@@ -1,0 +1,40 @@
+name: dlc-validate
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions: {}
+
+concurrency:
+  group: dlc-validate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate AI-DLC rules, links and config
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: scripts/validate-dlc
+        run: |
+          set -euo pipefail
+          bash scripts/validate-dlc
+
+      - name: Validator self-tests
+        run: |
+          set -euo pipefail
+          bash scripts/tests/validate-dlc.test.sh
+
+      - name: Hook tests
+        run: |
+          set -euo pipefail
+          bash .claude/hooks/tests/guard-command.test.sh
+          bash .claude/hooks/tests/other-hooks.test.sh

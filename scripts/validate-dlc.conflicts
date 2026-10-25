@@ -1,0 +1,11 @@
+# Phrases that contradict locked decisions when they appear in an instruction file line with
+# positive polarity (no never/not/no/avoid on that line). Format: <gawk regex><TAB><reason>.
+# Matching is case-insensitive; \< and \> are gawk word boundaries.
+# Add a line when a new locked decision is easy to contradict.
+\<(use|uses|using|add|install|reference)\>[^.]*\<(entity framework|ef core)\>	contradicts BE-02 / ADR-0002 (no EF Core)
+localstorage\.setitem|\<(store|save|keep)\>[^.]*\<tokens?\>[^.]*\<(localstorage|sessionstorage)\>	contradicts SEC-09 / ADR-0005 (no tokens in browser storage)
+\<dynamodb_table\>	contradicts AWS-02 / ADR-0007 (native S3 locking)
+\<(run|execute)\>[^.]*\<terraform apply\>	contradicts CORE-06 (humans apply)
+\<(skip|disable)\> [^.]*\<(tests?|hooks)\>	contradicts CORE-08 / CORE-13
+\<offset\>[^.]*\<pagination\>|\<pagination\>[^.]*\<offset\>	contradicts DB-13 / API-07 (keyset pagination)
+\<static (aws )?(access )?keys\>	contradicts AWS-12 / MISSION (OIDC only)

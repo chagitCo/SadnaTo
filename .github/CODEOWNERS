@@ -1,0 +1,40 @@
+# CODEOWNERS — who must approve changes to which paths (CR-05, ADR-0010/0016).
+# Today one person owns everything. Replace @chagitCo with team handles as teams are created
+# (intended teams are noted on each block). Later lines take precedence over earlier ones.
+
+# Default owner for anything not listed below
+*                                   @chagitCo
+
+# AI-DLC process, instructions and enforcement — intended: @<org>/dlc-maintainers
+/CLAUDE.md                          @chagitCo
+/.claude/                           @chagitCo
+/docs/ai-dlc/                       @chagitCo
+/docs/standards/                    @chagitCo
+/templates/                         @chagitCo
+/checklists/                        @chagitCo
+/scripts/                           @chagitCo
+/.github/                           @chagitCo
+
+# Architecture decisions — intended: @<org>/architects
+/docs/adr/                          @chagitCo
+/docs/services/catalog.md           @chagitCo
+
+# Platform packages and shared infrastructure — intended: @<org>/platform
+/src/backend/platform/              @chagitCo
+/infra/modules/                     @chagitCo
+/infra/bootstrap/                   @chagitCo
+/infra/live/                        @chagitCo
+
+# Service: projects (Phase 3) — intended: @<org>/team-projects
+/src/backend/services/projects/     @chagitCo
+/db/projects/                       @chagitCo
+/infra/services/projects/           @chagitCo
+
+# Service: notifications (Phase 5) — intended: @<org>/team-notifications
+/src/backend/services/notifications/ @chagitCo
+/db/notifications/                  @chagitCo
+/infra/services/notifications/      @chagitCo
+
+# Web app and BFF (Phase 4) — intended: @<org>/team-web
+/src/frontend/                      @chagitCo
+/src/backend/services/web-bff/      @chagitCo

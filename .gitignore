@@ -1,0 +1,41 @@
+# Secrets and local config (never commit)
+.env
+.env.*
+*.pem
+*.key
+*.pfx
+*.p12
+**/secrets/**
+
+# Claude Code personal files
+CLAUDE.local.md
+.claude/settings.local.json
+
+# .NET
+bin/
+obj/
+*.user
+TestResults/
+coverage*/
+
+# Node / frontend
+node_modules/
+dist/
+.vite/
+playwright-report/
+test-results/
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.vs/
+.idea/
+.vscode/*
+!.vscode/extensions.json

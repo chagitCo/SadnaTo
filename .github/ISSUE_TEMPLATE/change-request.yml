@@ -1,0 +1,27 @@
+name: Change request
+description: Change an existing behavior, contract, standard or locked decision.
+title: "change: <short title>"
+labels: ["change-request"]
+body:
+  - type: textarea
+    id: current
+    attributes:
+      label: Current behavior or rule
+      description: Link the code, contract, standard rule ID (e.g. SEC-03) or ADR.
+    validations:
+      required: true
+  - type: textarea
+    id: proposed
+    attributes:
+      label: Proposed change and reason
+    validations:
+      required: true
+  - type: checkboxes
+    id: impact
+    attributes:
+      label: Impact
+      options:
+        - label: Changes a public API or event contract (new major version may be needed)
+        - label: Changes a locked decision or Accepted ADR (needs a new ADR, CORE-12)
+        - label: Affects security, tenancy or data classification
+        - label: Affects cost

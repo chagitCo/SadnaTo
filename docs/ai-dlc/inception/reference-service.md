@@ -234,7 +234,7 @@ TLS 1.2+ in transit, data residency per Q6, and no production data in non-prod e
 | T13 | Info disclosure | XSS steals data via the UI | Browser | React escaping, no `dangerouslySetInnerHTML`, strict CSP via CloudFront response headers, Trusted Types where supported | ESLint rule, CSP header test | Low |
 | T14 | DoS | Request floods / expensive list queries | APIs, DB | WAF rate rules, API Gateway throttling, `limit` max 100, keyset indexes, statement_timeout per role | Load test, WAF config scan | Medium |
 | T15 | DoS | Poison message blocks the consumer | Notifications | maxReceiveCount 5 → DLQ, alarm, redrive runbook | AC-10.4 | Low |
-| T16 | Elevation | Viewer performs writes, or a Member reopens others' tasks | Tasks | Role policy in the Application layer, checked again in `api` functions | AC-1.3, AC-4.4 | Low |
+| T16 | Elevation | Viewer performs writes, or a Member reopens others' tasks | Tasks | Role policy in the Application layer (SEC-04, ARCH-07); the app DB role can only execute `api` routines (DB-02) | AC-1.3, AC-4.4 | Low |
 | T17 | Elevation | App DB role escalates via `SECURITY DEFINER` search_path hijack | DB | Pinned `search_path`, `REVOKE CREATE ON SCHEMA public`, owner-only schemas | pgTAP + SQL lint | Low |
 | T18 | Elevation | Compromised CI workflow deploys to prod | AWS prod | OIDC trust limited to `environment:prod`, required reviewers, pinned action SHAs, CODEOWNERS on `.github/` | `dlc-check github`, Checkov on IAM | Medium (depends on Q9) |
 | T19 | Elevation | AI agent runs destructive or irreversible commands | Repo, AWS | Deny rules + PreToolUse hook, no AWS write credentials on dev machines | Hook unit tests (Phase 2) | Low |

@@ -1,0 +1,37 @@
+name: Bug report
+description: Something does not work as specified.
+title: "fix: <short title>"
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: "Do not paste secrets, tokens, customer data or production logs with personal data. Use trace IDs instead."
+  - type: input
+    id: service
+    attributes:
+      label: Service / area
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected vs actual behavior
+    validations:
+      required: true
+  - type: input
+    id: trace
+    attributes:
+      label: Trace ID / time (UTC) / environment
+  - type: dropdown
+    id: impact
+    attributes:
+      label: Impact
+      options: ["Data exposure or security", "Outage / data loss", "Broken feature", "Minor"]
+    validations:
+      required: true

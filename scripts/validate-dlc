@@ -1,0 +1,390 @@
+#!/usr/bin/env bash
+# validate-dlc — validates the AI-DLC instruction set and configuration.
+#
+# Checks (each prints PASS/WARN/FAIL lines; exit 1 if any FAIL):
+#   budgets     instruction files within their line budgets
+#   links       relative Markdown links resolve to existing files
+#   rule-ids    each rule ID defined exactly once, in its home file; every referenced ID exists
+#   duplicates  the same rule text does not appear in two places (exact = FAIL, near = WARN)
+#   conflicts   no two rules with opposite polarity and the same content; no phrases that
+#               contradict locked decisions (scripts/validate-dlc.conflicts)
+#   skills      SKILL.md frontmatter, name = folder, required sections; required skills present
+#   agents      subagent frontmatter, read-only tools for reviewers, severity scale; required agents present
+#   settings    .claude/settings.json is valid JSON, required deny rules present, hook scripts exist
+#   adrs        every ADR has a valid status and is listed in the ADR index
+#   version     docs/ai-dlc/VERSION is SemVer and has a CHANGELOG entry; services' .dlc/version
+#   sql         db/**/migrations naming, SECURITY DEFINER pins search_path, R__ uses CREATE OR REPLACE
+#   catalog     every service folder is listed in docs/services/catalog.md
+#   required    files the DLC promises exist
+#
+# Usage: scripts/validate-dlc [--root DIR]
+# Needs: bash 4+, gawk (Git Bash on Windows ships both). No network access.
+set -uo pipefail
+
+ROOT=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --root) ROOT="$2"; shift 2 ;;
+    -h|--help) sed -n '2,21p' "$0"; exit 0 ;;
+    *) echo "unknown argument: $1" >&2; exit 2 ;;
+  esac
+done
+[ -z "$ROOT" ] && ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$ROOT" || { echo "cannot cd to $ROOT" >&2; exit 2; }
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CONFLICTS_FILE="$ROOT/scripts/validate-dlc.conflicts"
+[ -f "$CONFLICTS_FILE" ] || CONFLICTS_FILE="$SCRIPT_DIR/validate-dlc.conflicts"
+
+AWK="$(command -v gawk)" || { echo "validate-dlc needs gawk (GNU awk). Git Bash ships it; on Debian/Ubuntu: apt-get install gawk" >&2; exit 2; }
+FAILS=0; WARNS=0
+pass() { printf 'PASS [%s] %s\n' "$1" "$2"; }
+warn() { printf 'WARN [%s] %s\n' "$1" "$2"; WARNS=$((WARNS+1)); }
+fail() { printf 'FAIL [%s] %s\n' "$1" "$2"; FAILS=$((FAILS+1)); }
+
+# ---------------------------------------------------------------- file sets
+prune=( -path ./.git -o -path '*/node_modules' -o -path '*/bin' -o -path '*/obj' -o -path '*/.terraform' )
+mapfile -t ALL_MD < <(find . \( "${prune[@]}" \) -prune -o -type f -name '*.md' -print | sed 's#^\./##' | sort)
+mapfile -t CLAUDE_MD < <(printf '%s\n' "${ALL_MD[@]}" | grep -E '(^|/)CLAUDE\.md$')
+mapfile -t STANDARDS < <(printf '%s\n' "${ALL_MD[@]}" | grep -E '^docs/standards/[^/]+\.md$' | grep -v '/README\.md$')
+mapfile -t SKILLS < <(printf '%s\n' "${ALL_MD[@]}" | grep -E '^\.claude/skills/[^/]+/SKILL\.md$')
+mapfile -t AGENTS < <(printf '%s\n' "${ALL_MD[@]}" | grep -E '^\.claude/agents/.+\.md$')
+INSTRUCTION=( "${CLAUDE_MD[@]}" "${STANDARDS[@]}" "${SKILLS[@]}" "${AGENTS[@]}" )
+
+echo "validate-dlc — root: $ROOT"
+echo "files: ${#ALL_MD[@]} markdown, ${#INSTRUCTION[@]} instruction (${#CLAUDE_MD[@]} CLAUDE.md, ${#STANDARDS[@]} standards, ${#SKILLS[@]} skills, ${#AGENTS[@]} agents)"
+echo
+
+# ---------------------------------------------------------------- budgets
+budget_for() {
+  case "$1" in
+    CLAUDE.md) echo 150 ;;
+    */CLAUDE.md) echo 120 ;;
+    .claude/skills/*/SKILL.md) echo 500 ;;
+    .claude/agents/*) echo 200 ;;
+    docs/standards/*) echo 300 ;;
+    *) echo 100000 ;;
+  esac
+}
+over=0
+while IFS=$'\t' read -r f n; do
+  b="$(budget_for "$f")"
+  if [ "$n" -gt "$b" ]; then fail budgets "$f has $n lines (budget $b)"; over=$((over+1)); fi
+done < <("$AWK" 'ENDFILE { print FILENAME "\t" FNR }' "${INSTRUCTION[@]}")
+[ "$over" -eq 0 ] && pass budgets "all ${#INSTRUCTION[@]} instruction files within budget (root CLAUDE.md 150, folder CLAUDE.md 120, SKILL.md 500, agents 200, standards 300)"
+
+# ---------------------------------------------------------------- links
+broken=0; checked=0
+while IFS=$'\t' read -r f ln target; do
+  checked=$((checked+1))
+  t="${target%%#*}"; t="${t%%\?*}"; t="${t//%20/ }"
+  [ -z "$t" ] && continue
+  case "$t" in /*) p=".${t}" ;; *) d="${f%/*}"; [ "$d" = "$f" ] && d="."; p="$d/$t" ;; esac
+  if [ ! -e "$p" ]; then fail links "$f:$ln -> $target (not found)"; broken=$((broken+1)); fi
+done < <("$AWK" '
+  FNR == 1 { fence = 0 }
+  /^[[:space:]]*```/ { fence = !fence; next }
+  fence { next }
+  {
+    line = $0
+    gsub(/`[^`]*`/, "", line)                     # ignore inline code
+    while (match(line, /\]\(([^)[:space:]]+)( "[^"]*")?\)/)) {
+      t = substr(line, RSTART + 2, RLENGTH - 3)
+      sub(/ ".*$/, "", t); gsub(/^<|>$/, "", t)
+      line = substr(line, RSTART + RLENGTH)
+      if (t ~ /^(https?:|mailto:|#)/ || t ~ /[<>{}*]/) continue
+      print FILENAME "\t" FNR "\t" t
+    }
+  }' "${ALL_MD[@]}")
+[ "$broken" -eq 0 ] && pass links "$checked relative links checked in ${#ALL_MD[@]} files, none broken"
+
+# ---------------------------------------------------------------- rule ids
+PREFIXES='CORE|ARCH|BE|DB|FE|API|SEC|TEST|OBS|AWS|CICD|CR|GIT'
+rule_out="$("$AWK" -v P="$PREFIXES" '
+  BEGIN {
+    home["CORE"]="CLAUDE.md"; home["ARCH"]="docs/standards/architecture.md"; home["BE"]="docs/standards/backend-csharp.md"
+    home["DB"]="docs/standards/database-postgres.md"; home["FE"]="docs/standards/frontend-react.md"; home["API"]="docs/standards/api-design.md"
+    home["SEC"]="docs/standards/security.md"; home["TEST"]="docs/standards/testing.md"; home["OBS"]="docs/standards/observability.md"
+    home["AWS"]="docs/standards/aws-infrastructure.md"; home["CICD"]="docs/standards/ci-cd.md"; home["CR"]="docs/standards/code-review.md"
+    home["GIT"]="docs/standards/git-workflow.md"
+    defre = "^[[:space:]]*[-*][[:space:]]+\\*\\*(" P ")-[0-9][0-9][0-9]?\\*\\*"
+    refre = "(^|[^A-Za-z0-9_])(" P ")-[0-9][0-9][0-9]?([^0-9]|$)"
+  }
+  FNR == 1 { fence = 0 }
+  /^[[:space:]]*```/ { fence = !fence }
+  {
+    if (!fence && match($0, defre)) {
+      id = substr($0, RSTART, RLENGTH); sub(/^[^*]*\*\*/, "", id); sub(/\*\*$/, "", id)
+      pre = id; sub(/-.*/, "", pre)
+      if (id in def) print "DUPDEF\t" id "\t" def[id] "\t" FILENAME ":" FNR
+      else def[id] = FILENAME ":" FNR
+      if (FILENAME != home[pre]) print "WRONGHOME\t" id "\t" FILENAME ":" FNR "\t" home[pre]
+    }
+    line = $0
+    while (match(line, refre)) {
+      m = substr(line, RSTART, RLENGTH); gsub(/^[^A-Z]+|[^0-9]+$/, "", m)
+      refs[m] = refs[m] ? refs[m] : FILENAME ":" FNR
+      line = substr(line, RSTART + RLENGTH - 1)
+    }
+  }
+  END {
+    nd = 0; for (d in def) nd++
+    for (r in refs) if (!(r in def)) print "UNKNOWN\t" r "\t" refs[r]
+    nr = 0; for (r in refs) nr++
+    print "STATS\t" nd "\t" nr
+  }' "${ALL_MD[@]}")"
+rule_fail=0
+while IFS=$'\t' read -r kind a b c; do
+  case "$kind" in
+    DUPDEF) fail rule-ids "$a defined twice: $b and $c"; rule_fail=1 ;;
+    WRONGHOME) fail rule-ids "$a defined in $b but its home is $c"; rule_fail=1 ;;
+    UNKNOWN) fail rule-ids "$a referenced at $b but never defined"; rule_fail=1 ;;
+    STATS) ndefs="$a"; nrefs="$b" ;;
+  esac
+done <<< "$rule_out"
+[ "$rule_fail" -eq 0 ] && pass rule-ids "${ndefs:-0} rule IDs defined once each in their home file; ${nrefs:-0} distinct IDs referenced, all defined"
+
+# ---------------------------------------------------------------- duplicates + conflicts
+dup_out="$("$AWK" -v P="$PREFIXES" -v CF="$CONFLICTS_FILE" '
+  function norm(s) {
+    sub(/^[[:space:]]*([-*]|[0-9]+\.)[[:space:]]+/, "", s)
+    s = gensub("\\*\\*(" P ")-[0-9]+\\*\\*", "", "g", s)
+    s = gensub("(" P ")-[0-9]+", "", "g", s)
+    gsub(/\]\([^)]*\)/, "]", s)
+    s = tolower(s); gsub(/[^a-z0-9]+/, " ", s); gsub(/^ +| +$/, "", s)
+    return s
+  }
+  BEGIN {
+    split("never no not don dont cannot without avoid avoided forbidden prohibited nor isn aren doesn", a, " ")
+    for (i in a) NEG[a[i]] = 1
+    split("must should shall always only may can will is are be the a an of to in for and or with by on at from as that this it its each every all any t s", b, " ")
+    for (i in b) STOP[b[i]] = 1
+    nc = 0
+    while ((getline l < CF) > 0) {
+      if (l ~ /^#/ || l !~ /\t/) continue
+      nc++; split(l, parts, "\t"); CRE[nc] = tolower(parts[1]); CWHY[nc] = parts[2]
+    }
+    defre = "^[[:space:]]*[-*][[:space:]]+\\*\\*(" P ")-[0-9]+\\*\\*"
+  }
+  FNR == 1 { fence = 0 }
+  /^[[:space:]]*```/ { fence = !fence; next }
+  fence { next }
+  /^[[:space:]]*([-*]|[0-9]+\.)[[:space:]]+/ {
+    # Every bullet in an instruction file is compared (a rule restated without modal words is
+    # still a duplicate); polarity and conflict checks use the same tokens.
+    isdef = ($0 ~ defre)
+    low = tolower($0)
+    s = norm($0); nt = split(s, t, " ")
+    neg = 0; core = ""
+    for (k = 1; k <= nt; k++) { if (t[k] in NEG) neg = 1; else if (!(t[k] in STOP)) core = core " " t[k] }
+    if (!neg) for (c = 1; c <= nc; c++) if (low ~ CRE[c]) print "CONFLICT\t" FILENAME ":" FNR "\t" CWHY[c]
+    if (nt < 6) next
+    n++; LOC[n] = FILENAME ":" FNR; NORM[n] = s; NT[n] = nt; DEF[n] = isdef; NEGV[n] = neg
+    nk = split(core, ck, " "); NC[n] = nk
+    for (k = 1; k <= nk; k++) CORE[n][ck[k]] = 1
+    for (k = 1; k <= nt; k++) TOK[n][t[k]] = 1
+  }
+  function jac(A, B,    x, inter, ua, ub) {
+    inter = 0; ua = 0; ub = 0
+    for (x in A) { ua++; if (x in B) inter++ }
+    for (x in B) ub++
+    return (ua + ub - inter) ? inter / (ua + ub - inter) : 0
+  }
+  END {
+    for (i = 1; i <= n; i++) {
+      if (NORM[i] in seen) print "DUP\t" seen[NORM[i]] "\t" LOC[i] "\t" substr(NORM[i], 1, 90)
+      else seen[NORM[i]] = LOC[i]
+    }
+    for (i = 1; i <= n; i++) for (j = i + 1; j <= n; j++) {
+      if (NORM[i] == NORM[j]) continue
+      if (NEGV[i] != NEGV[j]) {
+        if (!(DEF[i] || DEF[j]) || NC[i] < 4 || NC[j] < 4) continue
+        jc = jac(CORE[i], CORE[j])
+        if (jc >= 0.999) print "CONTRA\t" LOC[i] "\t" LOC[j] "\t" substr(NORM[j], 1, 90)
+        else if (jc >= 0.7) print "CONTRA?\t" LOC[i] "\t" LOC[j] "\t" sprintf("%.2f", jc)
+      } else if (NT[i] >= 8 && NT[j] >= 8) {
+        jt = jac(TOK[i], TOK[j])
+        if (jt >= 0.85) print "NEAR\t" LOC[i] "\t" LOC[j] "\t" sprintf("%.2f", jt)
+      }
+    }
+    print "STATS\t" n "\t" nc
+  }' "${INSTRUCTION[@]}")"
+d_fail=0; c_fail=0
+while IFS=$'\t' read -r kind a b c; do
+  case "$kind" in
+    DUP) fail duplicates "same rule text at $a and $b: \"$c\""; d_fail=1 ;;
+    NEAR) warn duplicates "near-duplicate rule text at $a and $b (similarity $c)" ;;
+    CONTRA) fail conflicts "opposite rules at $a and $b: \"$c\""; c_fail=1 ;;
+    "CONTRA?") warn conflicts "possibly contradictory rules at $a and $b (core similarity $c)" ;;
+    CONFLICT) fail conflicts "$a: $b"; c_fail=1 ;;
+    STATS) nrules="$a"; ncf="$b" ;;
+  esac
+done <<< "$dup_out"
+[ "$d_fail" -eq 0 ] && pass duplicates "${nrules:-0} rule statements compared; no exact duplicates"
+[ "$c_fail" -eq 0 ] && pass conflicts "no opposite-polarity rule pairs; ${ncf:-0} locked-decision conflict patterns not found"
+
+# ---------------------------------------------------------------- skills + agents
+REQUIRED_SKILLS="aidlc-inception new-service new-feature new-api-endpoint new-db-function new-event new-service-integration new-adr threat-model production-readiness-review release"
+REQUIRED_AGENTS="security-reviewer architecture-reviewer test-reviewer db-reviewer"
+fm_out="$("$AWK" '
+  BEGIN {
+    split("name description when_to_use argument-hint arguments disable-model-invocation user-invocable allowed-tools context agent model effort hooks paths shell", s, " "); for (i in s) SK[s[i]] = 1
+    split("name description tools disallowedTools model permissionMode maxTurns autoCompactWindow skills mcpServers hooks memory background omitClaudeMd effort isolation color initialPrompt experimental", g, " "); for (i in g) AG[g[i]] = 1
+  }
+  FNR == 1 {
+    if (NR > 1) finish()
+    file = FILENAME; infm = 0; fmdone = 0; name = ""; desc = ""; tools = ""; body = ""; heads = ""
+    isskill = (file ~ /SKILL\.md$/)
+    if ($0 != "---") print "NOFM\t" file
+    else { infm = 1; next }
+  }
+  infm && $0 == "---" { infm = 0; fmdone = 1; next }
+  infm {
+    key = $0; sub(/:.*/, "", key)
+    val = $0; sub(/^[^:]*:[[:space:]]*/, "", val)
+    if (key ~ /^[A-Za-z_-]+$/) {
+      if (isskill && !(key in SK)) print "BADKEY\t" file "\t" key
+      if (!isskill && !(key in AG)) print "BADKEY\t" file "\t" key
+    }
+    if (key == "name") name = val
+    if (key == "description") desc = val
+    if (key == "tools") tools = val
+    next
+  }
+  /^## / { heads = heads "|" $0 }
+  { body = body " " $0 }
+  function finish(   base) {
+    base = file
+    if (isskill) { sub(/\/SKILL\.md$/, "", base); sub(/.*\//, "", base) } else { sub(/.*\//, "", base); sub(/\.md$/, "", base) }
+    # empty fields become "-" because bash `read` collapses consecutive tab separators
+    print "META\t" file "\t" (isskill ? "skill" : "agent") "\t" base "\t" (name != "" ? name : "-") "\t" (desc != "" ? "1" : "0") "\t" (tools != "" ? tools : "-") "\t" (heads != "" ? heads : "-") "\t" ((body ~ /Critical/ && body ~ /High/ && body ~ /Medium/ && body ~ /Low/) ? "1" : "0")
+  }
+  END { if (NR > 0) finish() }' "${SKILLS[@]}" "${AGENTS[@]}")"
+s_fail=0; a_fail=0; seen_skills=" "; seen_agents=" "
+while IFS=$'\t' read -r kind f type base name hasdesc tools heads sev; do
+  case "$kind" in
+    NOFM) fail frontmatter "$f: frontmatter must start on line 1 with ---"; s_fail=1 ;;
+    BADKEY) warn frontmatter "$f: unknown frontmatter key '$type' (Claude Code ignores unknown keys)" ;;
+    META)
+      if [ "$type" = skill ]; then
+        seen_skills="$seen_skills$base "
+        [ "$name" = "$base" ] || { fail skills "$f: name '$name' must equal folder '$base'"; s_fail=1; }
+        [ "$hasdesc" = 1 ] || { fail skills "$f: description missing"; s_fail=1; }
+        for h in "## When to use" "## Required inputs" "## Steps" "## Artifacts produced" "## Checks to run" "## Definition of done"; do
+          case "$heads" in *"|$h"*) ;; *) fail skills "$f: missing section '$h'"; s_fail=1 ;; esac
+        done
+      else
+        seen_agents="$seen_agents$base "
+        [ "$name" = "$base" ] || { fail agents "$f: name '$name' must equal file name '$base'"; a_fail=1; }
+        [ "$hasdesc" = 1 ] || { fail agents "$f: description missing"; a_fail=1; }
+        case "$base" in *-reviewer)
+          [ "$tools" != "-" ] || { fail agents "$f: reviewers must declare tools (read-only)"; a_fail=1; }
+          for t in ${tools//,/ }; do
+            case "$t" in Read|Grep|Glob) ;; *) fail agents "$f: reviewer has non-read-only tool '$t'"; a_fail=1 ;; esac
+          done
+          [ "$sev" = 1 ] || { fail agents "$f: must use the Critical/High/Medium/Low severity scale"; a_fail=1; } ;;
+        esac
+      fi ;;
+  esac
+done <<< "$fm_out"
+for s in $REQUIRED_SKILLS; do case "$seen_skills" in *" $s "*) ;; *) fail skills "required skill missing: .claude/skills/$s/SKILL.md"; s_fail=1 ;; esac; done
+for a in $REQUIRED_AGENTS; do case "$seen_agents" in *" $a "*) ;; *) fail agents "required subagent missing: .claude/agents/$a.md"; a_fail=1 ;; esac; done
+[ "$s_fail" -eq 0 ] && pass skills "${#SKILLS[@]} skills: frontmatter valid, name = folder, all six required sections; required set present"
+[ "$a_fail" -eq 0 ] && pass agents "${#AGENTS[@]} subagents: frontmatter valid, reviewers read-only (Read/Grep/Glob) with severity scale; required set present"
+
+# ---------------------------------------------------------------- settings
+SET=".claude/settings.json"
+if [ ! -f "$SET" ]; then fail settings "$SET missing"; else
+  json_ok=""
+  if [ -n "${VALIDATE_DLC_SKIP_JSON:-}" ]; then json_ok=skipped
+  elif command -v jq >/dev/null 2>&1; then jq empty "$SET" >/dev/null 2>&1 && json_ok=yes || json_ok=no
+  elif command -v node >/dev/null 2>&1; then node -e 'JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"))' "$SET" >/dev/null 2>&1 && json_ok=yes || json_ok=no
+  elif command -v pwsh >/dev/null 2>&1; then pwsh -NoProfile -Command "Get-Content -Raw '$SET' | ConvertFrom-Json | Out-Null" >/dev/null 2>&1 && json_ok=yes || json_ok=no
+  elif command -v powershell.exe >/dev/null 2>&1; then powershell.exe -NoProfile -Command "Get-Content -Raw '$SET' | ConvertFrom-Json | Out-Null" >/dev/null 2>&1 && json_ok=yes || json_ok=no
+  fi
+  case "$json_ok" in
+    yes) pass settings "$SET is valid JSON" ;;
+    no) fail settings "$SET is not valid JSON" ;;
+    skipped) pass settings "JSON syntax check skipped (VALIDATE_DLC_SKIP_JSON set)" ;;
+    *) warn settings "no JSON parser (jq/node/pwsh/powershell) available; JSON syntax not checked" ;;
+  esac
+  st_fail=0
+  for rule in 'Read(.env*)' 'Read(**/secrets/**)' 'Read(*.pem)' 'Bash(terraform apply*)' 'Bash(terraform destroy*)' 'Bash(git push --force*)' 'Bash(git push origin main*)' 'Bash(rm -rf *)' 'Bash(aws * delete-*)'; do
+    grep -qF "\"$rule\"" "$SET" || { fail settings "required deny rule missing: $rule"; st_fail=1; }
+  done
+  for ev in PreToolUse PostToolUse Stop; do grep -q "\"$ev\"" "$SET" || { fail settings "hook event $ev not configured"; st_fail=1; }; done
+  while IFS= read -r hs; do [ -f "$hs" ] || { fail settings "hook script referenced but missing: $hs"; st_fail=1; }; done \
+    < <(grep -oE '\.claude/hooks/[A-Za-z0-9_.-]+\.sh' "$SET" | sort -u)
+  [ "$st_fail" -eq 0 ] && pass settings "required deny rules, hook events and hook scripts present"
+fi
+
+# ---------------------------------------------------------------- adrs
+adr_fail=0; nadr=0
+for f in docs/adr/[0-9][0-9][0-9][0-9]-*.md; do
+  [ -e "$f" ] || continue
+  nadr=$((nadr+1)); num="${f#docs/adr/}"; num="${num%%-*}"
+  st="$(sed -n '2,6p' "$f" | grep -m1 '^status:' | sed 's/^status:[[:space:]]*//')"
+  case "$st" in Proposed|Accepted|Rejected|Deprecated|"Superseded by ADR-"[0-9][0-9][0-9][0-9]) ;; *) fail adrs "$f: invalid or missing status '$st'"; adr_fail=1 ;; esac
+  grep -q "($num-" docs/adr/README.md || { fail adrs "$f not listed in docs/adr/README.md"; adr_fail=1; }
+done
+[ "$adr_fail" -eq 0 ] && pass adrs "$nadr ADRs have valid status values and are listed in the index"
+
+# ---------------------------------------------------------------- version
+v_fail=0
+V="$(tr -d '[:space:]' < docs/ai-dlc/VERSION 2>/dev/null)"
+semver='^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'
+if [[ ! "$V" =~ $semver ]]; then fail version "docs/ai-dlc/VERSION '$V' is not SemVer"; v_fail=1
+elif ! grep -qF "## [$V]" docs/ai-dlc/CHANGELOG.md 2>/dev/null; then fail version "docs/ai-dlc/CHANGELOG.md has no '## [$V]' entry"; v_fail=1; fi
+nsvc=0
+for d in src/backend/services/*/; do
+  [ -d "$d" ] || continue
+  svc="${d%/}"; svc="${svc##*/}"; nsvc=$((nsvc+1))
+  sv="$(tr -d '[:space:]' < "${d}.dlc/version" 2>/dev/null)"
+  if [[ ! "$sv" =~ $semver ]]; then fail version "$svc: ${d}.dlc/version missing or not SemVer"; v_fail=1; continue; fi
+  IFS=. read -r M m _ <<< "$V"; IFS=. read -r sM sm _ <<< "$sv"
+  if [ "$sM" -lt "$M" ] || { [ "$sM" -eq "$M" ] && [ $((m - sm)) -gt 1 ]; }; then warn version "$svc is on DLC $sv, current is $V (see docs/ai-dlc/upgrading.md)"; fi
+done
+[ "$v_fail" -eq 0 ] && pass version "DLC $V (SemVer, changelog entry present); $nsvc service(s) checked"
+
+# ---------------------------------------------------------------- sql
+sql_fail=0; nsql=0
+while IFS= read -r f; do
+  [ -z "$f" ] && continue
+  nsql=$((nsql+1)); b="${f##*/}"
+  if [[ ! "$b" =~ ^(V[0-9]{12}__[a-z0-9_]+|R__[a-z_]+\.[a-z0-9_]+)\.sql$ ]]; then fail sql "$f: name violates DB-08"; sql_fail=1; fi
+  if grep -qi 'security definer' "$f" && ! grep -qi 'set search_path' "$f"; then fail sql "$f: SECURITY DEFINER without SET search_path (DB-03)"; sql_fail=1; fi
+  if [[ "$b" == R__* ]] && ! grep -qi 'create or replace' "$f"; then fail sql "$f: repeatable migration without CREATE OR REPLACE (DB-08)"; sql_fail=1; fi
+done < <(find db -path '*/migrations/*.sql' -type f 2>/dev/null | sort)
+[ "$sql_fail" -eq 0 ] && pass sql "$nsql migration file(s) checked"
+
+# ---------------------------------------------------------------- catalog
+cat_fail=0
+for d in src/backend/services/*/; do
+  [ -d "$d" ] || continue
+  svc="${d%/}"; svc="${svc##*/}"
+  grep -q "\`$svc\`" docs/services/catalog.md || { fail catalog "service '$svc' is not listed in docs/services/catalog.md (ARCH-01)"; cat_fail=1; }
+done
+[ "$cat_fail" -eq 0 ] && pass catalog "every service folder is listed in the catalog"
+
+# ---------------------------------------------------------------- required files
+req_fail=0
+for f in CLAUDE.md README.md CONTRIBUTING.md SECURITY.md .gitignore .gitattributes .editorconfig \
+         src/backend/CLAUDE.md src/frontend/CLAUDE.md db/CLAUDE.md infra/CLAUDE.md \
+         docs/ai-dlc/MISSION.md docs/ai-dlc/process.md docs/ai-dlc/state.md docs/ai-dlc/audit.md docs/ai-dlc/plan.md \
+         docs/ai-dlc/VERSION docs/ai-dlc/CHANGELOG.md docs/ai-dlc/upgrading.md docs/ai-dlc/repository-structure.md \
+         docs/adr/README.md docs/services/catalog.md docs/standards/README.md \
+         docs/standards/architecture.md docs/standards/backend-csharp.md docs/standards/database-postgres.md \
+         docs/standards/frontend-react.md docs/standards/api-design.md docs/standards/security.md docs/standards/testing.md \
+         docs/standards/observability.md docs/standards/aws-infrastructure.md docs/standards/ci-cd.md \
+         docs/standards/code-review.md docs/standards/git-workflow.md \
+         .claude/settings.json .claude/hooks/README.md .claude/hooks/guard-command.sh \
+         .github/CODEOWNERS .github/pull_request_template.md \
+         templates/README.md templates/adr.md templates/threat-model.md templates/runbook.md templates/feature-plan.md \
+         templates/api-endpoint.md templates/db-function.sql templates/migration.sql templates/test-plan.md templates/service/README.md \
+         checklists/security.md checklists/production-readiness.md checklists/code-review.md checklists/release.md checklists/db-change.md; do
+  [ -e "$f" ] || { fail required "missing $f"; req_fail=1; }
+done
+[ "$req_fail" -eq 0 ] && pass required "all required DLC files present"
+
+echo
+echo "validate-dlc: $FAILS failure(s), $WARNS warning(s)"
+[ "$FAILS" -eq 0 ]
