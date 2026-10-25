@@ -1,13 +1,13 @@
 # AI-DLC Delivery Plan — Phases 2–5
 
-Status: **Proposed** (Phase 1). Each phase ends at a human gate (process.md §4). IDs are referenced
+Status: **Accepted** (Phase 1 gate, 2026-10-25). Each phase ends at a human gate (process.md §4). IDs are referenced
 in PRs and `audit.md`. `→` means "depends on".
 
 ## Prerequisites (human, before Phase 2 can run any command)
 
 - [ ] P-1 Install the toolchain (environment-report §3) and confirm the container runtime licence (Q11).
-- [ ] P-2 Create the GitHub repository and push the initial history, so the Phase 1 PR can be opened.
-- [ ] P-3 Answer or confirm Q1–Q11 (`inception/questions.md`). Accept or amend ADR-0001…0015.
+- [x] P-2 Create the GitHub repository and push the initial history, so the Phase 1 PR can be opened.
+- [x] P-3 Answer or confirm Q1–Q11 (`inception/questions.md`). Accept or amend ADR-0001…0015.
 
 ## Phase 2 — DLC foundation (Construction of the toolkit) → P-1, P-2, P-3
 

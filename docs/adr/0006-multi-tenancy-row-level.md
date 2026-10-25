@@ -1,6 +1,6 @@
 ---
-status: Proposed
-date: 2026-10-21
+status: Accepted
+date: 2026-10-21 (accepted 2026-10-25)
 deciders: Human approver (repo owner)
 consulted: Principal Architect, Application Security Engineer
 informed: All service teams
@@ -29,7 +29,7 @@ enforced, given that all data access goes through PostgreSQL functions (ADR-0002
 
 ## Decision Outcome
 
-Chosen option: **4** (PENDING **Q4**).
+Chosen option: **4**.
 
 1. Every tenant-owned table has `tenant_id uuid NOT NULL`. The primary key includes `tenant_id` or is unique per tenant, and every index starts with `tenant_id`. Foreign keys are composite (`tenant_id, id`), so cross-tenant references are impossible.
 2. **The tenant is never taken from the request body or the URL alone.** The API resolves `tenant_id` from the authenticated principal: the active organization claim, validated against membership in the Projects service. Every `api` function takes `p_tenant_id` as its first parameter and filters on it.

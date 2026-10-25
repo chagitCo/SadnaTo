@@ -1,6 +1,6 @@
 # Proposed Repository Structure
 
-Status: **Proposed** (Phase 1). Assumes a **monorepo** ([ADR-0010](../adr/0010-repository-strategy-monorepo.md), pending Q1).
+Status: **Accepted** (Phase 1 gate, 2026-10-25). Assumes a **monorepo** ([ADR-0010](../adr/0010-repository-strategy-monorepo.md), Q1 confirmed).
 Markers: **M** = mandatory (CI `dlc-check` fails without it), **C** = conditional (required when the
 condition in the note applies), **E** = example (reference implementation that shows the pattern and
 can be replaced).

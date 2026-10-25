@@ -1,6 +1,6 @@
 # AI-DLC Process (organization standard)
 
-Status: **Proposed** (Phase 1). Basis: [MISSION.md](MISSION.md), [ADR-0001](../adr/0001-adopt-ai-dlc.md).
+Status: **Accepted** (Phase 1 gate, 2026-10-25). Basis: [MISSION.md](MISSION.md), [ADR-0001](../adr/0001-adopt-ai-dlc.md).
 
 ## 1. Principles
 

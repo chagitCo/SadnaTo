@@ -1,6 +1,6 @@
 ---
-status: Proposed
-date: 2026-10-21
+status: Accepted
+date: 2026-10-21 (accepted 2026-10-25)
 deciders: Human approver (repo owner)
 consulted: Principal Architect, DevSecOps Engineer (Claude Code roles)
 informed: All service teams

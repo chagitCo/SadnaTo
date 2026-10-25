@@ -2,7 +2,7 @@
 
 Source of truth for every deployable unit, its owner and boundary (Microservices rule 10,
 [ADR-0011](../adr/0011-service-boundaries-and-catalog.md)). A row is added in the same PR that
-creates the service. Status: **Proposed** (Phase 1). Nothing is built yet.
+creates the service. Status: **Accepted** (Phase 1 gate, 2026-10-25). Nothing is built yet.
 
 | Service | Kind | Bounded context | Owner (CODEOWNERS) | Database | Publishes | Consumes | Sync API | ADR | Runbook | Status |
 |---|---|---|---|---|---|---|---|---|---|---|

@@ -1,7 +1,7 @@
 # Reference System: "Projects & Tasks" + "Notifications"
 
-Status: **Proposed** (Phase 1 Inception artifact). Related: [catalog](../../services/catalog.md),
-ADR-0002, 0005, 0006, 0011, 0012, 0014. Pending questions affecting this document: Q2, Q4, Q7, Q10.
+Status: **Accepted** (Phase 1 Inception artifact, gate passed 2026-10-25). Related: [catalog](../../services/catalog.md),
+ADR-0002, 0005, 0006, 0011, 0012, 0014. Questions Q2, Q4, Q7 and Q10 confirmed with their defaults on 2026-10-25.
 
 ## 1. Intent
 

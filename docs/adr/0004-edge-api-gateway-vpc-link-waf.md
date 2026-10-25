@@ -1,6 +1,6 @@
 ---
-status: Proposed
-date: 2026-10-21
+status: Accepted
+date: 2026-10-21 (accepted 2026-10-25)
 deciders: Human approver (repo owner)
 consulted: AWS Cloud Architect, Application Security Engineer
 informed: All service teams
@@ -66,4 +66,4 @@ ECS services ⇄ each other via ECS Service Connect (internal only, ADR-0014)
 
 ## More Information
 
-- Region choice is pending **Q6**. Confirm WAF, Cognito, VPC link V2 and Service Connect availability in the chosen Region before Phase 4.
+- Region choice is confirmed in Q6 (default). Confirm WAF, Cognito, VPC link V2 and Service Connect availability in the chosen Region before Phase 4.

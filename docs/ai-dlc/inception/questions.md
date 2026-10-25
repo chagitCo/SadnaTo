@@ -1,8 +1,16 @@
 # Phase 1 — Questions for the human approver
 
 These questions cover only decisions that materially affect **security, cost, compatibility or
-architecture**. Each one has a proposed default. All Phase 1 artifacts are written with these
-defaults and marked **PENDING CONFIRMATION**. Answer with the number and "OK", or give your choice.
+architecture**. Each one has a proposed default.
+
+> **Resolution (2026-10-25):** the human approver replied "defaults OK". **All proposed defaults
+> for Q1–Q11 and assumptions A1–A9 are confirmed** (including A3: the `Workshop.` prefix is kept).
+> Recorded in `docs/ai-dlc/audit.md`. Still open: the NFR-11 dev cost ceiling, which has no default,
+> and acceptance of residual risk T12.
+>
+> Note on Q9: the repository `chagitCo/SadnaTo` is **public**. The private-repo fallback in the
+> default is not needed, because rulesets and Environment reviewers work for public repos on every
+> plan.
 
 | # | Question | Proposed default | Why it matters | Affects |
 |---|---|---|---|---|

@@ -1,6 +1,6 @@
 ---
-status: Proposed
-date: 2026-10-21
+status: Accepted
+date: 2026-10-21 (accepted 2026-10-25)
 deciders: Human approver (repo owner)
 consulted: Application Security Engineer, Senior React/TypeScript Engineer, Senior C#/.NET Engineer
 informed: All service teams
@@ -28,7 +28,7 @@ in localStorage**. The choice between a BFF and in-memory tokens must be made in
 
 ## Decision Outcome
 
-Chosen option: **1 — BFF** (PENDING **Q2**).
+Chosen option: **1 — BFF**.
 
 - **Implementation:** an ASP.NET Core service `web-bff` (`services/web-bff/`). It is an edge component, **not** a bounded context (ADR-0011). It uses OIDC code flow + PKCE as a **confidential client** against Cognito.
 - **Session:** the cookie `__Host-session` has `Secure`, `HttpOnly`, `SameSite=Strict`, `Path=/` and an 8 h sliding / 12 h absolute lifetime. Tokens are stored **server-side-encrypted in the cookie ticket** (ASP.NET Core Data Protection, chunked cookies). Data Protection keys are persisted to SSM Parameter Store and encrypted with a dedicated KMS key, so tasks share keys without a cache or database (MISSION global rule 9). If the cookie size becomes a problem, revisit with a server-side ticket store in a new ADR.
