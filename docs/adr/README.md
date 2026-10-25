@@ -1,0 +1,28 @@
+# Architecture Decision Records
+
+Format: [MADR 4](https://adr.github.io/madr/). File name: `NNNN-kebab-title.md`. Start from
+[`0000-template.md`](0000-template.md). ADRs are immutable once **Accepted**. To change a decision,
+write a new ADR that supersedes the old one and update the old one's status to
+`Superseded by ADR-NNNN`.
+
+Status values: `Proposed` → `Accepted` | `Rejected` → `Superseded by ADR-NNNN` | `Deprecated`.
+Every ADR in this list is **Proposed** until the human approver accepts it at the Phase 1 gate. The
+approval is recorded in `docs/ai-dlc/audit.md`.
+
+| ADR | Title | Status | Pending question |
+|---|---|---|---|
+| [0001](0001-adopt-ai-dlc.md) | Adopt AI-DLC (Claude Code-native) | Proposed | — |
+| [0002](0002-data-access-postgresql-functions.md) | Data access via PostgreSQL functions/procedures, no EF Core | Proposed | — |
+| [0003](0003-migration-tool-flyway.md) | Migration tool: Flyway OSS | Proposed | Q5 |
+| [0004](0004-edge-api-gateway-vpc-link-waf.md) | Edge: API Gateway REST + WAF + VPC Link V2 → ALB → ECS | Proposed | Q6 |
+| [0005](0005-browser-auth-bff.md) | Browser auth: BFF with HttpOnly cookies | Proposed | Q2, Q7 |
+| [0006](0006-multi-tenancy-row-level.md) | Multi-tenancy: row-level `tenant_id` + RLS | Proposed | Q4 |
+| [0007](0007-terraform-layout-and-state.md) | Terraform layout and state | Proposed | Q6 |
+| [0008](0008-github-flow-environments-releases.md) | GitHub Flow, environments, releases | Proposed | Q9 |
+| [0009](0009-service-generation-and-dlc-upgrades.md) | Service generation (`dotnet new` pack) and DLC upgrades | Proposed | — |
+| [0010](0010-repository-strategy-monorepo.md) | Repository strategy: monorepo | Proposed | Q1 |
+| [0011](0011-service-boundaries-and-catalog.md) | Service boundaries and service catalog | Proposed | — |
+| [0012](0012-inter-service-communication.md) | Inter-service communication: events first | Proposed | Q10 |
+| [0013](0013-database-per-service-on-rds.md) | Database per service on RDS | Proposed | Q3 |
+| [0014](0014-service-to-service-authn-authz.md) | Service-to-service authentication and authorization | Proposed | Q8 |
+| [0015](0015-shared-platform-packages.md) | Shared platform packages | Proposed | Q10 |
