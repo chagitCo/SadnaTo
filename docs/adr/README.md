@@ -27,4 +27,4 @@ approval is recorded in `docs/ai-dlc/audit.md`.
 | [0013](0013-database-per-service-on-rds.md) | Database per service on RDS | Accepted | Q3 |
 | [0014](0014-service-to-service-authn-authz.md) | Service-to-service authentication and authorization | Accepted | Q8 |
 | [0015](0015-shared-platform-packages.md) | Shared platform packages | Accepted | Q10 |
-| [0016](0016-repository-layout-and-instruction-files.md) | Layer-first repository layout and instruction files (amends 0001, 0003, 0007, 0009, 0010) | Proposed | Phase 2 instruction |
+| [0016](0016-repository-layout-and-instruction-files.md) | Layer-first repository layout and instruction files (amends 0001, 0003, 0007, 0009, 0010) | Accepted | Phase 2 instruction |

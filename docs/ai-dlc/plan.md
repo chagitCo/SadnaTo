@@ -25,7 +25,7 @@ the .NET SDK or AWS moved to Phase 3 as 3.0x.
 | 2.7 | Templates (artifacts, service questionnaire, SQL shapes), checklists, PR/issue templates, CODEOWNERS | [x] |
 | 2.8 | DLC versioning: `VERSION`, `CHANGELOG.md`, `upgrading.md` | [x] |
 | 2.9 | `scripts/validate-dlc` + self-tests + `dlc-validate` workflow | [x] |
-| 2.10 | ADR-0016 (layout and instruction files) | [x] (Proposed) |
+| 2.10 | ADR-0016 (layout and instruction files) | [x] (Accepted 2026-10-25) |
 | 2.11 | Phase 2 exit: validation output, PR, `state.md`/`audit.md` | [x] |
 
 ## Phase 3 — Projects & Tasks service → Phase 2, P-1
