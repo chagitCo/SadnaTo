@@ -1,7 +1,7 @@
 # Repository Structure
 
-Status: **Accepted** (Phase 1 gate, 2026-10-25); **revised in Phase 2** for the layer-first layout of
-[ADR-0016](../adr/0016-repository-layout-and-instruction-files.md) (Proposed until the Phase 2 gate).
+Status: **Accepted** (Phase 1 gate, 2026-10-25); **revised in Phase 2** (accepted at the Phase 2 gate, 2026-10-25) for the layer-first layout of
+[ADR-0016](../adr/0016-repository-layout-and-instruction-files.md) (Accepted).
 Monorepo per [ADR-0010](../adr/0010-repository-strategy-monorepo.md).
 
 Markers: **M** = mandatory (`scripts/validate-dlc` or CI fails without it), **C** = conditional
